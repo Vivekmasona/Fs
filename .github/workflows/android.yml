@@ -100,10 +100,10 @@ jobs:
 
         gradle wrapper --gradle-version 8.5
 
-    - name: Build APK with Gradle (Debug Mode)
+    - name: Build APK with Gradle
       run: |
         chmod +x gradlew
-        ./gradlew assembleDebug --debug
+        ./gradlew assembleDebug --stacktrace
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
