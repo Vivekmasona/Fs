@@ -17,10 +17,13 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Setup Project Directories & Files
+    - name: Setup Project Directories & Resources
       run: |
+        # Create standard Android directories including res/values
         mkdir -p app/src/main/java/com/vidofy/app
+        mkdir -p app/src/main/res/values
         
+        # Move code files into their correct locations
         if [ -f AndroidManifest.xml ]; then
           mv AndroidManifest.xml app/src/main/
         fi
@@ -31,6 +34,14 @@ jobs:
           mv VidofyService.java app/src/main/java/com/vidofy/app/
         fi
 
+        # Generate mandatory strings.xml to prevent resource compilation errors
+        cat << 'EOF' > app/src/main/res/values/strings.xml
+        <resources>
+            <string name="app_name">Vidofy</string>
+        </resources>
+        EOF
+
+        # Write clean settings.gradle
         cat << 'EOF' > settings.gradle
         pluginManagement {
             repositories {
@@ -50,12 +61,14 @@ jobs:
         include ':app'
         EOF
 
+        # Write root build.gradle
         cat << 'EOF' > build.gradle
         plugins {
             id 'com.android.application' version '8.2.0' apply false
         }
         EOF
 
+        # Write app/build.gradle
         cat << 'EOF' > app/build.gradle
         plugins {
             id 'com.android.application'
@@ -96,7 +109,7 @@ jobs:
     - name: Build APK with Gradle
       run: |
         chmod +x gradlew
-        ./gradlew assembleDebug --stacktrace --info
+        ./gradlew assembleDebug --stacktrace
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
