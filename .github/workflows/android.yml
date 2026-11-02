@@ -19,10 +19,8 @@ jobs:
 
     - name: Setup Project Directories & Files
       run: |
-        # Create proper Android directory hierarchy
         mkdir -p app/src/main/java/com/vidofy/app
         
-        # Move code files into their correct native locations
         if [ -f AndroidManifest.xml ]; then
           mv AndroidManifest.xml app/src/main/
         fi
@@ -33,7 +31,6 @@ jobs:
           mv VidofyService.java app/src/main/java/com/vidofy/app/
         fi
 
-        # Write clean settings.gradle
         cat << 'EOF' > settings.gradle
         pluginManagement {
             repositories {
@@ -53,14 +50,12 @@ jobs:
         include ':app'
         EOF
 
-        # Write root build.gradle
         cat << 'EOF' > build.gradle
         plugins {
             id 'com.android.application' version '8.2.0' apply false
         }
         EOF
 
-        # Write app/build.gradle with correct dependencies
         cat << 'EOF' > app/build.gradle
         plugins {
             id 'com.android.application'
@@ -96,13 +91,12 @@ jobs:
         }
         EOF
 
-        # Initialize gradle wrapper to generate gradlew file
         gradle wrapper --gradle-version 8.5
 
     - name: Build APK with Gradle
       run: |
         chmod +x gradlew
-        ./gradlew assembleDebug --stacktrace
+        ./gradlew assembleDebug --stacktrace --info
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
