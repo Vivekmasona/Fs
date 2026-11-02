@@ -14,11 +14,11 @@ android {
         versionName "1.0"
     }
 
-    // Yeh batata hai ki files direct root folder mein hain
     sourceSets {
         main {
             manifest.srcFile 'AndroidManifest.xml'
-            java.srcDirs ['.']
+            java.srcDirs = ['']
+            res.srcDirs = ['res']
         }
     }
 
