@@ -33,7 +33,7 @@ jobs:
           mv VidofyService.java app/src/main/java/com/vidofy/app/
         fi
 
-        # Generate proper settings.gradle with Google and Maven Central repositories
+        # Generate proper settings.gradle
         cat << 'EOF' > settings.gradle
         pluginManagement {
             repositories {
@@ -96,8 +96,13 @@ jobs:
         }
         EOF
 
+        # Generate Gradle Wrapper so gradlew exists!
+        gradle wrapper
+
     - name: Build APK with Gradle
-      run: ./gradlew assembleDebug
+      run: |
+        chmod +x gradlew
+        ./gradlew assembleDebug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
