@@ -19,11 +19,9 @@ jobs:
 
     - name: Generate Complete Android Project Structure & Code
       run: |
-        # 1. Create standard Android directory hierarchy
         mkdir -p app/src/main/java/com/vidofy/app
         mkdir -p app/src/main/res/values
 
-        # 2. Generate AndroidManifest.xml
         cat << 'EOF' > app/src/main/AndroidManifest.xml
         <?xml version="1.0" encoding="utf-8"?>
         <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -63,14 +61,12 @@ jobs:
         </manifest>
         EOF
 
-        # 3. Generate strings.xml
         cat << 'EOF' > app/src/main/res/values/strings.xml
         <resources>
             <string name="app_name">Vidofy</string>
         </resources>
         EOF
 
-        # 4. Generate MainActivity.java
         cat << 'EOF' > app/src/main/java/com/vidofy/app/MainActivity.java
         package com.vidofy.app;
 
@@ -181,7 +177,6 @@ jobs:
         }
         EOF
 
-        # 5. Generate VidofyService.java
         cat << 'EOF' > app/src/main/java/com/vidofy/app/VidofyService.java
         package com.vidofy.app;
 
@@ -237,7 +232,6 @@ jobs:
         }
         EOF
 
-        # 6. Generate Gradle configuration files
         cat << 'EOF' > settings.gradle
         pluginManagement {
             repositories {
@@ -300,10 +294,10 @@ jobs:
 
         gradle wrapper --gradle-version 8.5
 
-    - name: Build APK with Gradle
+    - name: Build APK with Gradle (Info Mode)
       run: |
         chmod +x gradlew
-        ./gradlew assembleDebug
+        ./gradlew assembleDebug --info --stacktrace
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
