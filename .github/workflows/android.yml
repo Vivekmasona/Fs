@@ -1,4 +1,4 @@
-name: Build Native Root APK
+name: Build Native APK
 
 on:
   push:
@@ -17,14 +17,76 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
+    - name: Auto-Organize Android Project Structure
+      run: |
+        # Create standard Android native folders automatically
+        mkdir -p app/src/main/java/com/vidofy/app
+        
+        # Move root files into the correct native Android directories
+        if [ -f AndroidManifest.xml ]; then
+          mv AndroidManifest.xml app/src/main/
+        fi
+        if [ -f MainActivity.java ]; then
+          mv MainActivity.java app/src/main/java/com/vidofy/app/
+        fi
+        if [ -f VidofyService.java ]; then
+          mv VidofyService.java app/src/main/java/com/vidofy/app/
+        fi
+
+        # Generate standard settings.gradle
+        echo "include ':app'" > settings.gradle
+
+        # Generate root build.gradle
+        cat << 'EOF' > build.gradle
+        plugins {
+            id 'com.android.application' version '8.2.0' apply false
+        }
+        EOF
+
+        # Generate app/build.gradle
+        cat << 'EOF' > app/build.gradle
+        plugins {
+            id 'com.android.application'
+        }
+
+        android {
+            namespace 'com.vidofy.app'
+            compileSdk 34
+
+            defaultConfig {
+                applicationId "com.vidofy.app"
+                minSdk 24
+                targetSdk 34
+                versionCode 1
+                versionName "1.0"
+            }
+
+            buildTypes {
+                release {
+                    minifyEnabled false
+                    proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                }
+            }
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+        }
+
+        dependencies {
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+            implementation 'com.google.android.material:material:1.11.0'
+        }
+        EOF
+
+        # Make gradlew executable
+        gradle wrapper
 
     - name: Build APK with Gradle
-      run: gradle assembleDebug
+      run: ./gradlew assembleDebug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: vidofy-debug
-        path: build/outputs/apk/debug/output-metadata.json
+        path: app/build/outputs/apk/debug/app-debug.apk
