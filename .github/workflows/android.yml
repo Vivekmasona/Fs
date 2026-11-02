@@ -17,27 +17,227 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Setup Project Directories & Resources
+    - name: Generate Complete Android Project Structure & Code
       run: |
+        # 1. Create standard Android directory hierarchy
         mkdir -p app/src/main/java/com/vidofy/app
         mkdir -p app/src/main/res/values
-        
-        if [ -f AndroidManifest.xml ]; then
-          mv AndroidManifest.xml app/src/main/
-        fi
-        if [ -f MainActivity.java ]; then
-          mv MainActivity.java app/src/main/java/com/vidofy/app/
-        fi
-        if [ -f VidofyService.java ]; then
-          mv VidofyService.java app/src/main/java/com/vidofy/app/
-        fi
 
+        # 2. Generate AndroidManifest.xml
+        cat << 'EOF' > app/src/main/AndroidManifest.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+            <uses-permission android:name="android.permission.INTERNET" />
+            <uses-permission android:name="android.permission.CAMERA" />
+            <uses-permission android:name="android.permission.RECORD_AUDIO" />
+            <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+            <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+            <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+            <uses-permission android:name="android.permission.WAKE_LOCK" />
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
+            <application
+                android:allowBackup="true"
+                android:label="Vidofy"
+                android:supportsRtl="true"
+                android:theme="@style/Theme.AppCompat.NoActionBar">
+                
+                <activity
+                    android:name=".MainActivity"
+                    android:exported="true"
+                    android:configChanges="orientation|screenSize|keyboardHidden">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+
+                <service
+                    android:name=".VidofyService"
+                    android:foregroundServiceType="mediaPlayback|microphone"
+                    android:exported="false" />
+            </application>
+        </manifest>
+        EOF
+
+        # 3. Generate strings.xml
         cat << 'EOF' > app/src/main/res/values/strings.xml
         <resources>
             <string name="app_name">Vidofy</string>
         </resources>
         EOF
 
+        # 4. Generate MainActivity.java
+        cat << 'EOF' > app/src/main/java/com/vidofy/app/MainActivity.java
+        package com.vidofy.app;
+
+        import android.Manifest;
+        import android.content.Intent;
+        import android.content.pm.PackageManager;
+        import android.os.Bundle;
+        import android.view.View;
+        import android.view.WindowInsets;
+        import android.view.WindowInsetsController;
+        import android.webkit.GeolocationPermissions;
+        import android.webkit.PermissionRequest;
+        import android.webkit.WebChromeClient;
+        import android.webkit.WebSettings;
+        import android.webkit.WebView;
+        import android.webkit.WebViewClient;
+        import androidx.appcompat.app.AppCompatActivity;
+        import androidx.core.app.ActivityCompat;
+        import androidx.core.content.ContextCompat;
+
+        public class MainActivity extends AppCompatActivity {
+            private WebView webView;
+            private static final int PERMISSION_REQUEST_CODE = 100;
+
+            @Override
+            protected void onCreate(Bundle savedInstanceState) {
+                super.onCreate(savedInstanceState);
+                
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    final WindowInsetsController controller = getWindow().getInsetsController();
+                    if (controller != null) {
+                        controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                        controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                    }
+                } else {
+                    View decorView = getWindow().getDecorView();
+                    decorView.setSystemUiVisibility(
+                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        | View.SYSTEM_UI_FLAG_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    );
+                }
+
+                webView = new WebView(this);
+                setContentView(webView);
+
+                checkAndRequestPermissions();
+
+                WebSettings settings = webView.getSettings();
+                settings.setJavaScriptEnabled(true);
+                settings.setDomStorageEnabled(true);
+                settings.setDatabaseEnabled(true);
+                settings.setMediaPlaybackRequiresUserGesture(false);
+                settings.setAllowFileAccess(true);
+                settings.setAllowContentAccess(true);
+
+                webView.setWebViewClient(new WebViewClient());
+                
+                webView.setWebChromeClient(new WebChromeClient() {
+                    @Override
+                    public void onPermissionRequest(final PermissionRequest request) {
+                        runOnUiThread(() -> request.grant(request.getResources()));
+                    }
+
+                    @Override
+                    public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+                        callback.invoke(origin, true, false);
+                    }
+                });
+
+                webView.loadUrl("https://vidofy.vercel.app");
+
+                Intent serviceIntent = new Intent(this, VidofyService.class);
+                ContextCompat.startForegroundService(this, serviceIntent);
+            }
+
+            private void checkAndRequestPermissions() {
+                String[] permissions = {
+                    Manifest.permission.CAMERA,
+                    Manifest.permission.RECORD_AUDIO,
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                };
+
+                boolean needed = false;
+                for (String perm : permissions) {
+                    if (ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
+                        needed = true;
+                        break;
+                    }
+                }
+                if (needed) {
+                    ActivityCompat.requestPermissions(this, permissions, PERMISSION_REQUEST_CODE);
+                }
+            }
+
+            @Override
+            public void onBackPressed() {
+                if (webView.canGoBack()) {
+                    webView.goBack();
+                } else {
+                    super.onBackPressed();
+                }
+            }
+        }
+        EOF
+
+        # 5. Generate VidofyService.java
+        cat << 'EOF' > app/src/main/java/com/vidofy/app/VidofyService.java
+        package com.vidofy.app;
+
+        import android.app.Notification;
+        import android.app.NotificationChannel;
+        import android.app.NotificationManager;
+        import android.app.Service;
+        import android.content.Intent;
+        import android.os.Build;
+        import android.os.IBinder;
+        import androidx.core.app.NotificationCompat;
+
+        public class VidofyService extends Service {
+            private static final String CHANNEL_ID = "VidofyChannel";
+
+            @Override
+            public void onCreate() {
+                super.onCreate();
+                createNotificationChannel();
+            }
+
+            @Override
+            public int onStartCommand(Intent intent, int flags, int startId) {
+                Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                        .setContentTitle("Vidofy Active")
+                        .setContentText("WebRTC Call & Audio running in background...")
+                        .setSmallIcon(android.R.drawable.ic_media_play)
+                        .setPriority(NotificationCompat.PRIORITY_HIGH)
+                        .build();
+
+                startForeground(1, notification);
+                return START_STICKY;
+            }
+
+            private void createNotificationChannel() {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    NotificationChannel serviceChannel = new NotificationChannel(
+                            CHANNEL_ID,
+                            "Vidofy Background Service",
+                            NotificationManager.IMPORTANCE_LOW
+                    );
+                    NotificationManager manager = getSystemService(NotificationManager.class);
+                    if (manager != null) {
+                        manager.createNotificationChannel(serviceChannel);
+                    }
+                }
+            }
+
+            @Override
+            public IBinder onBind(Intent intent) {
+                return null;
+            }
+        }
+        EOF
+
+        # 6. Generate Gradle configuration files
         cat << 'EOF' > settings.gradle
         pluginManagement {
             repositories {
@@ -103,7 +303,7 @@ jobs:
     - name: Build APK with Gradle
       run: |
         chmod +x gradlew
-        ./gradlew assembleDebug --stacktrace
+        ./gradlew assembleDebug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
