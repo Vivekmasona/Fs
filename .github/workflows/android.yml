@@ -17,12 +17,12 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Auto-Organize Android Project Structure
+    - name: Setup Project Directories & Files
       run: |
-        # Create standard Android native folders automatically
+        # Create proper Android directory hierarchy
         mkdir -p app/src/main/java/com/vidofy/app
         
-        # Move root files into correct native Android directories
+        # Move code files into their correct native locations
         if [ -f AndroidManifest.xml ]; then
           mv AndroidManifest.xml app/src/main/
         fi
@@ -33,7 +33,7 @@ jobs:
           mv VidofyService.java app/src/main/java/com/vidofy/app/
         fi
 
-        # Generate proper settings.gradle
+        # Write clean settings.gradle
         cat << 'EOF' > settings.gradle
         pluginManagement {
             repositories {
@@ -53,14 +53,14 @@ jobs:
         include ':app'
         EOF
 
-        # Generate root build.gradle
+        # Write root build.gradle
         cat << 'EOF' > build.gradle
         plugins {
             id 'com.android.application' version '8.2.0' apply false
         }
         EOF
 
-        # Generate app/build.gradle
+        # Write app/build.gradle with correct dependencies
         cat << 'EOF' > app/build.gradle
         plugins {
             id 'com.android.application'
@@ -96,13 +96,13 @@ jobs:
         }
         EOF
 
-        # Generate Gradle Wrapper so gradlew exists!
-        gradle wrapper
+        # Initialize gradle wrapper to generate gradlew file
+        gradle wrapper --gradle-version 8.5
 
     - name: Build APK with Gradle
       run: |
         chmod +x gradlew
-        ./gradlew assembleDebug
+        ./gradlew assembleDebug --stacktrace
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
